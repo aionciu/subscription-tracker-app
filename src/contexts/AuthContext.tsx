@@ -1,3 +1,4 @@
+import { getSecureErrorMessage } from '@/config/security';
 import { supabase } from '@/lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -72,6 +73,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     if (error) {
       console.log('AuthContext: Sign in error:', error.message);
+      // Return sanitized error for user display
+      return { error: { ...error, message: getSecureErrorMessage(error) } };
     } else {
       console.log('AuthContext: Sign in successful, user:', data.user?.id);
     }
@@ -89,6 +92,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       },
     });
+    
+    if (error) {
+      console.log('AuthContext: Sign up error:', error.message);
+      // Return sanitized error for user display
+      return { error: { ...error, message: getSecureErrorMessage(error) } };
+    }
+    
     return { error };
   };
 

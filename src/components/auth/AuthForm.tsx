@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/Button';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { ThemedView } from '@/components/ui/ThemedView';
+import { getSecureErrorMessage, sanitizeInput, validateEmail, validateFullName, validatePassword } from '@/config/security';
 import { useAuth } from '@/contexts/AuthContext';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { Ionicons } from '@expo/vector-icons';
@@ -96,6 +97,7 @@ export function AuthForm({ mode, onSuccess }: AuthFormProps) {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const { signIn, signUp } = useAuth();
   // const backgroundColor = useThemeColor({}, 'background'); // Unused for now
@@ -104,26 +106,57 @@ export function AuthForm({ mode, onSuccess }: AuthFormProps) {
   const primaryColor = useThemeColor({}, 'primary');
   const textColor = useThemeColor({}, 'text');
 
-  const handleEmailAuth = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
+  const validateForm = () => {
+    const newErrors: { [key: string]: string } = {};
+
+    // Validate email
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.isValid) {
+      newErrors.email = emailValidation.error!;
     }
 
-    if (mode === 'register' && !fullName.trim()) {
-      Alert.alert('Error', 'Please enter your full name');
+    // Validate password
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      newErrors.password = passwordValidation.error!;
+    }
+
+    // Validate full name for registration
+    if (mode === 'register') {
+      const fullNameValidation = validateFullName(fullName);
+      if (!fullNameValidation.isValid) {
+        newErrors.fullName = fullNameValidation.error!;
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleEmailAuth = async () => {
+    // Clear previous errors
+    setErrors({});
+
+    // Validate form inputs
+    if (!validateForm()) {
       return;
     }
 
     setLoading(true);
     try {
+      // Sanitize inputs
+      const sanitizedEmail = sanitizeInput(email);
+      const sanitizedPassword = sanitizeInput(password);
+      const sanitizedFullName = mode === 'register' ? sanitizeInput(fullName) : undefined;
+
       const { error } = mode === 'login' 
-        ? await signIn(email, password)
-        : await signUp(email, password, fullName);
+        ? await signIn(sanitizedEmail, sanitizedPassword)
+        : await signUp(sanitizedEmail, sanitizedPassword, sanitizedFullName);
 
       if (error) {
         console.log('AuthForm: Authentication failed:', error.message);
-        Alert.alert('Error', error.message);
+        const secureMessage = getSecureErrorMessage(error);
+        Alert.alert('Error', secureMessage);
       } else {
         console.log('AuthForm: Authentication successful, calling onSuccess...');
         onSuccess?.();
@@ -174,14 +207,19 @@ export function AuthForm({ mode, onSuccess }: AuthFormProps) {
           {/* Form Fields */}
           <View style={styles.form}>
             {mode === 'register' && (
-              <AnimatedInput
-                icon="person-outline"
-                placeholder="Full Name"
-                value={fullName}
-                onChangeText={setFullName}
-                autoCapitalize="words"
-                style={styles.inputContainer}
-              />
+              <>
+                <AnimatedInput
+                  icon="person-outline"
+                  placeholder="Full Name"
+                  value={fullName}
+                  onChangeText={setFullName}
+                  autoCapitalize="words"
+                  style={styles.inputContainer}
+                />
+                {errors.fullName && (
+                  <ThemedText style={styles.errorText}>{errors.fullName}</ThemedText>
+                )}
+              </>
             )}
 
             <AnimatedInput
@@ -192,6 +230,9 @@ export function AuthForm({ mode, onSuccess }: AuthFormProps) {
               keyboardType="email-address"
               style={styles.inputContainer}
             />
+            {errors.email && (
+              <ThemedText style={styles.errorText}>{errors.email}</ThemedText>
+            )}
 
             <AnimatedInput
               icon="lock-closed-outline"
@@ -203,6 +244,9 @@ export function AuthForm({ mode, onSuccess }: AuthFormProps) {
               onTogglePassword={() => setShowPassword(!showPassword)}
               style={styles.inputContainer}
             />
+            {errors.password && (
+              <ThemedText style={styles.errorText}>{errors.password}</ThemedText>
+            )}
 
             {/* Primary Action Button */}
             <Button
@@ -299,5 +343,11 @@ const styles = StyleSheet.create({
   primaryButton: {
     marginTop: 8,
     marginBottom: 8,
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 14,
+    marginTop: 4,
+    marginLeft: 4,
   },
 });

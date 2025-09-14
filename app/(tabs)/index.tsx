@@ -60,7 +60,7 @@ export default function DashboardScreen() {
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
               <ThemedText style={styles.avatarText}>
-                {user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                {user?.user_metadata?.full_name?.toUpperCase().charAt(0) || user?.email?.toUpperCase().charAt(0) || 'U'}
               </ThemedText>
             </View>
           </View>

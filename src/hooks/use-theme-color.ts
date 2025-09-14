@@ -11,8 +11,6 @@ export function useThemeColor(
   if (colorFromProps) {
     return colorFromProps;
   } else {
-    const color = Colors[themeMode][colorName];
-    console.log(`useThemeColor: ${colorName} for ${themeMode} = ${color}`);
-    return color;
+    return Colors[themeMode][colorName];
   }
 }

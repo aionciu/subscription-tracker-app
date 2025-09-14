@@ -130,13 +130,12 @@ const createStorageAdapter = () => {
   }
 };
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+import { getSecurityHeaders, validateEnvironment } from '@/config/security';
 
-console.log('Supabase URL:', supabaseUrl);
-console.log('Supabase Key:', supabaseAnonKey ? 'Present' : 'Missing');
+// Validate environment variables securely
+const { supabaseUrl, supabaseKey } = validateEnvironment();
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     storage: createStorageAdapter(),
     autoRefreshToken: true,
@@ -146,6 +145,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
     headers: {
       'X-Client-Info': 'react-native',
+      ...getSecurityHeaders(),
     },
   },
   realtime: {
