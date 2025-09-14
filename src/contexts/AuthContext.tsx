@@ -1,12 +1,21 @@
 import { getSecureErrorMessage } from '@/config/security';
 import { supabase } from '@/lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useReducer } from 'react';
 
-interface AuthContextType {
+interface AuthState {
   user: User | null;
   session: Session | null;
   loading: boolean;
+}
+
+type AuthAction =
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_SESSION'; payload: Session | null }
+  | { type: 'SET_USER'; payload: User | null }
+  | { type: 'SIGN_OUT' };
+
+interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -14,10 +23,29 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const authReducer = (state: AuthState, action: AuthAction): AuthState => {
+  switch (action.type) {
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    case 'SET_SESSION':
+      return { ...state, session: action.payload };
+    case 'SET_USER':
+      return { ...state, user: action.payload };
+    case 'SIGN_OUT':
+      return { user: null, session: null, loading: false };
+    default:
+      return state;
+  }
+};
+
+const initialState: AuthState = {
+  user: null,
+  session: null,
+  loading: true,
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [state, dispatch] = useReducer(authReducer, initialState);
 
   useEffect(() => {
     let mounted = true;
@@ -29,14 +57,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error('Error getting initial session:', error);
         }
         console.log('Initial session check:', session?.user?.id || 'No user');
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+        dispatch({ type: 'SET_SESSION', payload: session });
+        dispatch({ type: 'SET_USER', payload: session?.user ?? null });
+        dispatch({ type: 'SET_LOADING', payload: false });
       }
     }).catch((error) => {
       console.error('Failed to get initial session:', error);
       if (mounted) {
-        setLoading(false);
+        dispatch({ type: 'SET_LOADING', payload: false });
       }
     });
 
@@ -46,9 +74,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (mounted) {
         console.log('Auth state changed:', event, session?.user?.id || 'No user');
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+        dispatch({ type: 'SET_SESSION', payload: session });
+        dispatch({ type: 'SET_USER', payload: session?.user ?? null });
+        dispatch({ type: 'SET_LOADING', payload: false });
 
         if (event === 'SIGNED_IN' && session?.user) {
           console.log('User signed in successfully:', session.user.email);
@@ -64,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     console.log('AuthContext: Starting sign in for:', email);
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -80,9 +108,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     
     return { error };
-  };
+  }, []);
 
-  const signUp = async (email: string, password: string, fullName?: string) => {
+  const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -100,11 +128,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     
     return { error };
-  };
+  }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     console.log('AuthContext: Starting sign out process...');
-    setLoading(true); // Set loading during sign out
+    dispatch({ type: 'SET_LOADING', payload: true }); // Set loading during sign out
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
@@ -114,24 +142,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('AuthContext: Supabase sign out successful');
       
       // Manually clear local state as backup
-      setUser(null);
-      setSession(null);
-      setLoading(false); // Clear loading after state is cleared
+      dispatch({ type: 'SIGN_OUT' });
       console.log('AuthContext: Local state cleared');
     } catch (error) {
       console.error('AuthContext: Sign out failed:', error);
       // Even if Supabase fails, clear local state
-      setUser(null);
-      setSession(null);
-      setLoading(false); // Clear loading even on error
+      dispatch({ type: 'SIGN_OUT' });
       throw error;
     }
-  };
+  }, []);
 
   const value = {
-    user,
-    session,
-    loading,
+    user: state.user,
+    session: state.session,
+    loading: state.loading,
     signIn,
     signUp,
     signOut,

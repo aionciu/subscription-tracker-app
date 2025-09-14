@@ -1,20 +1,21 @@
 import { Button } from '@/components/ui/Button';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { ThemedView } from '@/components/ui/ThemedView';
-import { getSecureErrorMessage, sanitizeInput, validateEmail, validateFullName, validatePassword } from '@/config/security';
+import { getSecureErrorMessage, sanitizeInput } from '@/config/security';
 import { useAuth } from '@/contexts/AuthContext';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { validateLoginForm, validateRegisterForm } from '@/lib/validation';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  View
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    View
 } from 'react-native';
 
 interface AuthFormProps {
@@ -76,6 +77,9 @@ function AnimatedInput({
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
           autoCorrect={false}
+          accessibilityLabel={placeholder}
+          accessibilityHint={`Enter your ${placeholder.toLowerCase()}`}
+          importantForAccessibility="yes"
         />
         {showPasswordToggle && (
           <Ionicons
@@ -106,34 +110,22 @@ export function AuthForm({ mode, onSuccess }: AuthFormProps) {
   const primaryColor = useThemeColor({}, 'primary');
   const textColor = useThemeColor({}, 'text');
 
-  const validateForm = () => {
-    const newErrors: { [key: string]: string } = {};
+  const validateForm = useCallback(() => {
+    const formData = {
+      email,
+      password,
+      ...(mode === 'register' && { fullName }),
+    };
 
-    // Validate email
-    const emailValidation = validateEmail(email);
-    if (!emailValidation.isValid) {
-      newErrors.email = emailValidation.error!;
-    }
+    const validation = mode === 'login' 
+      ? validateLoginForm(formData as { email: string; password: string })
+      : validateRegisterForm(formData as { email: string; password: string; fullName: string });
 
-    // Validate password
-    const passwordValidation = validatePassword(password);
-    if (!passwordValidation.isValid) {
-      newErrors.password = passwordValidation.error!;
-    }
+    setErrors(validation.errors);
+    return validation.isValid;
+  }, [email, password, fullName, mode]);
 
-    // Validate full name for registration
-    if (mode === 'register') {
-      const fullNameValidation = validateFullName(fullName);
-      if (!fullNameValidation.isValid) {
-        newErrors.fullName = fullNameValidation.error!;
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleEmailAuth = async () => {
+  const handleEmailAuth = useCallback(async () => {
     // Clear previous errors
     setErrors({});
 
@@ -173,7 +165,7 @@ export function AuthForm({ mode, onSuccess }: AuthFormProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [email, password, fullName, mode, validateForm, signIn, signUp, onSuccess]);
 
   return (
     <KeyboardAvoidingView

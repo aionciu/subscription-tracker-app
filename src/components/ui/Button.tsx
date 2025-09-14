@@ -1,6 +1,6 @@
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef } from 'react';
 import { ActivityIndicator, Animated, StyleSheet, TouchableOpacity } from 'react-native';
 import { ThemedText } from './ThemedText';
 
@@ -15,7 +15,7 @@ interface ButtonProps {
   style?: any;
 }
 
-export function Button({
+export const Button = memo(function Button({
   title,
   onPress,
   variant = 'primary',
@@ -77,11 +77,11 @@ export function Button({
     }).start();
   };
 
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     if (isDisabled) return;
     console.log('Button pressed:', title);
     onPress();
-  };
+  }, [isDisabled, title, onPress]);
 
   if (variant === 'primary') {
     return (
@@ -100,6 +100,10 @@ export function Button({
           onPressOut={handlePressOut}
           disabled={isDisabled}
           activeOpacity={1}
+          accessibilityRole="button"
+          accessibilityLabel={title}
+          accessibilityHint={loading ? 'Loading' : undefined}
+          accessibilityState={{ disabled: isDisabled, busy: loading }}
         >
           <LinearGradient
             colors={[primaryColor, '#3B82F6']}
@@ -136,6 +140,10 @@ export function Button({
         onPressOut={handlePressOut}
         disabled={isDisabled}
         activeOpacity={1}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        accessibilityHint={loading ? 'Loading' : undefined}
+        accessibilityState={{ disabled: isDisabled, busy: loading }}
       >
         {loading ? (
           <ActivityIndicator color={primaryColor} size="small" />
@@ -147,7 +155,7 @@ export function Button({
       </TouchableOpacity>
     </Animated.View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   base: {
