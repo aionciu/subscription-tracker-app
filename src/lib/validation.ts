@@ -23,7 +23,7 @@ export const fullNameSchema = z
   .min(1, 'Full name is required')
   .min(2, 'Full name must be at least 2 characters long')
   .max(100, 'Full name is too long')
-  .regex(/^[a-zA-Z\s\-']+$/, 'Full name can only contain letters, spaces, hyphens, and apostrophes');
+  .regex(/^[a-zA-ZÀ-ÿ\s\-']+$/, 'Full name can only contain letters, spaces, hyphens, and apostrophes');
 
 // Auth form validation schemas
 export const loginSchema = z.object({
@@ -48,7 +48,7 @@ export function validateEmail(email: string): { isValid: boolean; error?: string
     return { isValid: true };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { isValid: false, error: error.errors[0]?.message };
+      return { isValid: false, error: error.issues[0]?.message };
     }
     return { isValid: false, error: 'Invalid email' };
   }
@@ -60,7 +60,7 @@ export function validatePassword(password: string): { isValid: boolean; error?: 
     return { isValid: true };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { isValid: false, error: error.errors[0]?.message };
+      return { isValid: false, error: error.issues[0]?.message };
     }
     return { isValid: false, error: 'Invalid password' };
   }
@@ -72,7 +72,7 @@ export function validateFullName(fullName: string): { isValid: boolean; error?: 
     return { isValid: true };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { isValid: false, error: error.errors[0]?.message };
+      return { isValid: false, error: error.issues[0]?.message };
     }
     return { isValid: false, error: 'Invalid full name' };
   }
@@ -86,7 +86,7 @@ export function validateLoginForm(data: { email: string; password: string }): { 
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errors: Record<string, string> = {};
-      error.errors.forEach((err) => {
+      error.issues.forEach((err: z.ZodIssue) => {
         if (err.path[0]) {
           errors[err.path[0] as string] = err.message;
         }
@@ -104,7 +104,7 @@ export function validateRegisterForm(data: { email: string; password: string; fu
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errors: Record<string, string> = {};
-      error.errors.forEach((err) => {
+      error.issues.forEach((err: z.ZodIssue) => {
         if (err.path[0]) {
           errors[err.path[0] as string] = err.message;
         }

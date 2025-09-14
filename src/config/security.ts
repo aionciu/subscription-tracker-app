@@ -94,21 +94,22 @@ export const sanitizeInput = (input: string): string => {
 export const getSecureErrorMessage = (error: any): string => {
   // Don't expose internal errors to users
   const errorMessage = error?.message || 'An error occurred';
+  const lowerErrorMessage = errorMessage.toLowerCase();
   
   // Map common Supabase errors to user-friendly messages
-  if (errorMessage.includes('Invalid login credentials')) {
+  if (lowerErrorMessage.includes('invalid login credentials')) {
     return 'Invalid email or password';
   }
   
-  if (errorMessage.includes('User already registered')) {
+  if (lowerErrorMessage.includes('user already registered')) {
     return 'An account with this email already exists';
   }
   
-  if (errorMessage.includes('Password should be at least')) {
+  if (lowerErrorMessage.includes('password should be at least')) {
     return 'Password does not meet security requirements';
   }
   
-  if (errorMessage.includes('Invalid email')) {
+  if (lowerErrorMessage.includes('invalid email')) {
     return 'Please enter a valid email address';
   }
   
